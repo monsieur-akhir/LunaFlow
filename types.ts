@@ -1,4 +1,3 @@
-
 export enum AppMode {
   CYCLE = 'CYCLE',
   PREGNANCY = 'PREGNANCY'
@@ -19,7 +18,10 @@ export interface UserSettings {
   usesContraception: boolean;
   pairingCode: string; // Code unique pour le partage
   isConnectedToPartner: boolean;
-  hasCompletedOnboarding: boolean; // Nouveau flag
+  hasCompletedOnboarding: boolean;
+  // New Security & Prefs fields
+  pinCode?: string; // Si défini, l'app demande le code au lancement
+  enableNotifications: boolean;
 }
 
 export interface MedicalData {
@@ -42,6 +44,27 @@ export interface DailyLog {
 export interface InsightData {
   title: string;
   content: string;
+}
+
+// --- ADMIN / DASHBOARD TYPES ---
+
+export interface AdminUserSummary {
+  id: string;
+  name: string;
+  age: number;
+  mode: AppMode;
+  status: 'active' | 'inactive' | 'alert'; // alert = retard important ou problème
+  lastActive: string;
+  cycleDayOrWeek: number; // J-X ou S-Y
+  symptomCountLastWeek: number;
+}
+
+export interface AdminStats {
+  totalUsers: number;
+  activePregnancies: number;
+  tryingToConceive: number;
+  alertsTriggered: number; // Retards > 7 jours non déclarés grossesse
+  symptomDistribution: Record<string, number>;
 }
 
 export const SYMPTOMS_LIST = [

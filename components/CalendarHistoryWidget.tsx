@@ -56,8 +56,7 @@ const CalendarHistoryWidget: React.FC<CalendarHistoryWidgetProps> = ({ logs, set
                 cycleStarts.push(index);
             } else {
                 const dayDiff = diffDays(new Date(log.date), new Date(prevLog.date));
-                // Si le log précédent date de plus de 7 jours, c'est un nouveau cycle
-                // Ou si le log précédent n'avait pas de 'flow' (mais attention aux oublis de log)
+                // Si le log précédent date de plus de 10 jours, c'est un nouveau cycle
                 // Simplification : Gap de > 10 jours entre deux logs de flow = nouveau cycle
                 let isNewCycle = true;
                 
@@ -84,8 +83,7 @@ const CalendarHistoryWidget: React.FC<CalendarHistoryWidgetProps> = ({ logs, set
         const startIndex = cycleStarts[i];
         const nextStartIndex = cycleStarts[i + 1]; // Can be undefined if it's the current cycle
 
-        // Si pas de prochain cycle, c'est le cycle en cours, on l'ignore pour l'historique "passé" 
-        // ou on l'affiche différemment. Ici on s'arrête au dernier cycle complet pour l'analyse.
+        // Si pas de prochain cycle, c'est le cycle en cours
         if (!nextStartIndex) continue;
 
         const startDate = sortedLogs[startIndex].date;
@@ -138,7 +136,14 @@ const CalendarHistoryWidget: React.FC<CalendarHistoryWidgetProps> = ({ logs, set
     const normalizedDay = ((cycleDay - 1) % settings.cycleLength) + 1;
     
     // 1. ACTUAL (Logged)
-    if (log?.flow) return { type: 'period-actual', color: 'bg-rose-500 text-white shadow-md shadow-rose-200' };
+    if (log?.flow) {
+       switch(log.flow) {
+           case 'light': return { type: 'period', color: 'bg-rose-300 text-white' };
+           case 'medium': return { type: 'period', color: 'bg-rose-400 text-white' };
+           case 'heavy': return { type: 'period', color: 'bg-rose-600 text-white shadow-md shadow-rose-200' };
+           default: return { type: 'period', color: 'bg-rose-500 text-white' };
+       }
+    }
     if (log?.sexualActivity) return { type: 'sex', color: 'bg-pink-100 text-pink-600 border border-pink-300' };
 
     // 2. PREDICTED (Math) - Only show for future or if no log exists
@@ -161,6 +166,7 @@ const CalendarHistoryWidget: React.FC<CalendarHistoryWidgetProps> = ({ logs, set
 
   const renderCalendar = () => {
     const grid = getMonthGrid(currentMonth);
+    const lastCycle = pastCycles.length > 0 ? pastCycles[0] : null;
 
     return (
       <div className="animate-fade-in">
@@ -212,7 +218,7 @@ const CalendarHistoryWidget: React.FC<CalendarHistoryWidgetProps> = ({ logs, set
             </div>
             <div className="flex items-center gap-1">
               <span className="w-2 h-2 rounded-full border border-rose-400 border-dashed bg-rose-50"></span>
-              <span>Règles (Prévues)</span>
+              <span>Prévues</span>
             </div>
             <div className="flex items-center gap-1">
               <span className="w-2 h-2 rounded-full bg-teal-50 border border-teal-200"></span>
@@ -222,11 +228,49 @@ const CalendarHistoryWidget: React.FC<CalendarHistoryWidgetProps> = ({ logs, set
               <span className="w-2 h-2 rounded-full bg-purple-100 border border-purple-300"></span>
               <span>Ovulation</span>
             </div>
-             <div className="flex items-center gap-1">
-              <span className="w-2 h-2 rounded-full bg-pink-100 border border-pink-300"></span>
-              <span>Rapport ❤️</span>
-            </div>
           </div>
+        )}
+
+        {/* PREVIOUS CYCLE SUMMARY */}
+        {lastCycle && settings.mode === AppMode.CYCLE && (
+            <div className="mt-4 bg-gradient-to-br from-slate-50 to-indigo-50 rounded-2xl p-4 border border-indigo-100 shadow-sm relative overflow-hidden group">
+                 <div className="flex justify-between items-start mb-2 relative z-10">
+                    <h4 className="text-xs font-bold uppercase text-indigo-900 tracking-wider">Dernier Cycle Terminé</h4>
+                    <button 
+                        onClick={() => setView('stats')} 
+                        className="text-[10px] bg-white px-2 py-1 rounded-lg border border-indigo-100 text-indigo-600 font-bold hover:bg-indigo-50 transition"
+                    >
+                        Comparer
+                    </button>
+                 </div>
+
+                 <div className="flex gap-4 relative z-10 items-end">
+                     <div>
+                         <span className="text-2xl font-bold text-slate-700">{lastCycle.length}</span>
+                         <span className="text-xs text-slate-500 font-medium ml-1">jours</span>
+                     </div>
+                     <div className="w-px h-8 bg-indigo-200/50"></div>
+                     <div>
+                         <span className="text-2xl font-bold text-rose-500">{lastCycle.periodDuration}</span>
+                         <span className="text-xs text-rose-400 font-medium ml-1">j règles</span>
+                     </div>
+                     <div className="flex-1 text-right">
+                         {lastCycle.topSymptoms.length > 0 && (
+                            <span className="text-[10px] bg-white border border-slate-200 px-2 py-1 rounded-full text-slate-500">
+                                {lastCycle.topSymptoms[0]}
+                            </span>
+                         )}
+                     </div>
+                 </div>
+
+                 <p className="text-[10px] text-slate-400 mt-2 relative z-10 font-medium">
+                    {new Date(lastCycle.startDate).toLocaleDateString('fr-FR', {day: 'numeric', month:'short'})} - {new Date(lastCycle.endDate).toLocaleDateString('fr-FR', {day: 'numeric', month:'short'})}
+                 </p>
+                 
+                 <div className="absolute -right-2 -bottom-4 text-6xl opacity-5 group-hover:opacity-10 transition-opacity rotate-12">
+                     🔄
+                 </div>
+            </div>
         )}
       </div>
     );
@@ -360,7 +404,7 @@ const CalendarHistoryWidget: React.FC<CalendarHistoryWidgetProps> = ({ logs, set
 
               {/* FLUX MENSTRUEL SELECTOR */}
               <div className="mb-4">
-                 <p className="text-[10px] uppercase font-bold text-slate-400 mb-2">Flux Menstruel</p>
+                 <p className="text-[10px] uppercase font-bold text-slate-400 mb-2">Flux Menstruel (Début/Fin)</p>
                  <div className="flex gap-2">
                     {flowOptions.map((opt) => {
                         const isSelected = log.flow === opt.id;

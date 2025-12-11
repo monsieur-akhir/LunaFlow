@@ -1,6 +1,6 @@
 import React from 'react';
 import { AppMode } from '../types';
-import { getCyclePhase, getOvulationDay, addDays, formatDateFr } from '../utils/dateUtils';
+import { getCyclePhase, getOvulationDay, addDays, formatDateFr, getProjectedOvulationDate } from '../utils/dateUtils';
 
 interface DynamicInfoWidgetProps {
   mode: AppMode;
@@ -57,9 +57,8 @@ const DynamicInfoWidget: React.FC<DynamicInfoWidgetProps> = ({ mode, cycleDay, c
     // Calcul date ovulation probable
     let ovulationDateStr = '';
     if (lastPeriodDate) {
-        const ovulationDayIndex = getOvulationDay(cycleLength);
-        // lastPeriodDate est jour 1, donc on ajoute ovulationDayIndex - 1
-        const ovulationDate = addDays(lastPeriodDate, ovulationDayIndex - 1);
+        // Utilisation de la nouvelle fonction qui projette l'ovulation sur le cycle ACTUEL
+        const ovulationDate = getProjectedOvulationDate(lastPeriodDate, cycleLength);
         ovulationDateStr = formatDateFr(ovulationDate);
     }
 

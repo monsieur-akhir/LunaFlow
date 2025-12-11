@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { UserSettings } from '../types';
 
@@ -5,9 +6,10 @@ interface ProfileModalProps {
   settings: UserSettings;
   onSave: (newSettings: UserSettings) => void;
   onClose: () => void;
+  onOpenAdmin: () => void; // Nouvelle prop
 }
 
-const ProfileModal: React.FC<ProfileModalProps> = ({ settings, onSave, onClose }) => {
+const ProfileModal: React.FC<ProfileModalProps> = ({ settings, onSave, onClose, onOpenAdmin }) => {
   const [localName, setLocalName] = useState(settings.name);
   const [partnerInput, setPartnerInput] = useState(settings.partnerName || '');
   const [pairingInput, setPairingInput] = useState('');
@@ -135,6 +137,18 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ settings, onSave, onClose }
               >
                 {settings.isConnectedToPartner ? 'Compte Lié ✅' : 'Valider le lien'}
               </button>
+              
+              <div className="mt-4 pt-4 border-t border-slate-100 flex justify-center">
+                 <button 
+                    onClick={() => {
+                        onClose();
+                        onOpenAdmin();
+                    }}
+                    className="text-[10px] text-slate-400 hover:text-indigo-500 underline font-medium"
+                 >
+                    Accès Praticien / Admin
+                 </button>
+              </div>
             </div>
           )}
         </div>

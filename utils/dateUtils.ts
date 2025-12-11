@@ -40,6 +40,14 @@ export const getCycleDay = (lastPeriod: Date, targetDate: Date = new Date()): nu
   return days + 1; // Day 1 is the start date
 };
 
+export const getDelayDays = (lastPeriod: Date, cycleLength: number): number => {
+  const currentDay = getCycleDay(lastPeriod);
+  if (currentDay > cycleLength) {
+    return currentDay - cycleLength;
+  }
+  return 0;
+};
+
 // --- NOUVELLES FONCTIONS DE FERTILITÉ ---
 
 export const getOvulationDay = (cycleLength: number): number => {
@@ -61,11 +69,13 @@ export const getFertileWindow = (lastPeriod: Date, cycleLength: number): { start
 export const getFertilityStatus = (lastPeriod: Date, cycleLength: number, targetDate: Date = new Date()): { status: 'low' | 'high' | 'peak', label: string } => {
   const currentDay = getCycleDay(lastPeriod, targetDate);
   
+  // Si retard important, la fertilité n'est plus calculable standard (probablement 0 ou ovulation tardive)
+  if (currentDay > cycleLength) return { status: 'low', label: 'Retard de règles' };
+
   // Si le jour est négatif (avant les dernières règles), on ne calcule pas
   if (currentDay < 1) return { status: 'low', label: '' };
 
-  // On module par la longueur du cycle pour gérer les cycles suivants (prévisionnel simple)
-  const dayInCycle = ((currentDay - 1) % cycleLength) + 1;
+  const dayInCycle = currentDay; // Pas de modulo ici, on veut le vrai jour du cycle en cours
 
   const ovulationDay = getOvulationDay(cycleLength);
   
@@ -74,81 +84,116 @@ export const getFertilityStatus = (lastPeriod: Date, cycleLength: number, target
   return { status: 'low', label: 'Fertilité Faible' };
 };
 
-export const getCyclePhase = (day: number, cycleLength: number): { phase: string, description: string, icon: string } => {
-  // Normalize day for visual widget
-  const normalizedDay = ((day - 1) % cycleLength) + 1;
+export const getCyclePhase = (day: number, cycleLength: number): { phase: string, description: string, icon: string, color: 'red' | 'blue' | 'purple' | 'orange' } => {
   const ovulationDay = getOvulationDay(cycleLength);
   
-  if (normalizedDay <= 5) {
+  if (day > cycleLength) {
+     return {
+         phase: 'Retard',
+         description: 'Fin de cycle dépassée. Possibilité de grossesse ou décalage.',
+         icon: '⚠️',
+         color: 'red'
+     };
+  }
+
+  if (day <= 5) {
     return { 
       phase: 'Menstruations', 
       description: 'Niveau d\'énergie bas. Prenez du temps pour vous reposer.',
-      icon: '🩸' 
+      icon: '🩸',
+      color: 'red'
     };
-  } else if (normalizedDay < ovulationDay - 5) {
+  } else if (day < ovulationDay - 5) {
     return { 
       phase: 'Phase Folliculaire', 
       description: 'L\'énergie remonte ! L\'œstrogène augmente, vous vous sentez dynamique.',
-      icon: '🌱' 
+      icon: '🌱',
+      color: 'blue'
     };
-  } else if (normalizedDay <= ovulationDay) {
+  } else if (day <= ovulationDay) {
     return { 
       phase: 'Fenêtre Fertile', 
       description: 'Pic de libido et d\'énergie. Moment idéal pour concevoir.',
-      icon: '🌸' 
+      icon: '🌸',
+      color: 'purple'
     };
   } else {
     return { 
       phase: 'Phase Lutéale', 
       description: 'La progestérone domine. Humeur plus calme, cocooning recommandé.',
-      icon: '🌙' 
+      icon: '🌙',
+      color: 'orange'
     };
   }
 };
 
 export const getNextCycleEvent = (lastPeriod: Date, cycleLength: number): { title: string; daysLeft: number; date: Date; icon: string; color: string } => {
   const today = new Date();
-  const currentCycleDay = getCycleDay(lastPeriod, today);
-  const normalizedDay = ((currentCycleDay - 1) % cycleLength) + 1;
+  today.setHours(0, 0, 0, 0); // Normaliser aujourd'hui à minuit
+
+  const lp = new Date(lastPeriod);
+  lp.setHours(0, 0, 0, 0);
+
+  const diffTime = today.getTime() - lp.getTime();
+  const currentDay = Math.floor(diffTime / (1000 * 60 * 60 * 24)) + 1;
   
   const ovulationDay = getOvulationDay(cycleLength);
   const fertileStartDay = ovulationDay - 5;
   
-  // Cibles
-  const nextPeriodDate = addDays(lastPeriod, cycleLength);
-  const ovulationDate = addDays(lastPeriod, ovulationDay - 1);
-  const fertileStartDate = addDays(lastPeriod, fertileStartDay - 1);
+  // Dates absolues pour ce cycle spécifique
+  const fertileStartDate = addDays(lp, fertileStartDay - 1);
+  const ovulationDate = addDays(lp, ovulationDay - 1);
+  const nextPeriodDate = addDays(lp, cycleLength); 
 
-  // 1. Avant fenêtre fertile
-  if (normalizedDay < fertileStartDay) {
-    const diff = diffDays(fertileStartDate, today);
-    // Si c'est aujourd'hui ou demain
-    if (diff <= 0) return { title: "Fenêtre Fertile", daysLeft: 0, date: fertileStartDate, icon: "🌸", color: "text-teal-500" };
-    return { title: "Période Fertile", daysLeft: diff, date: fertileStartDate, icon: "🌱", color: "text-teal-500" };
+  // 1. Retard
+  if (currentDay > cycleLength) {
+      const lateDays = currentDay - cycleLength;
+      return { title: "Retard", daysLeft: lateDays, date: today, icon: "⚠️", color: "text-rose-600" };
+  }
+
+  // 2. Avant la fenêtre fertile
+  if (currentDay < fertileStartDay) {
+    const dLeft = diffDays(fertileStartDate, today);
+    return { title: "Période Fertile", daysLeft: dLeft, date: fertileStartDate, icon: "🌱", color: "text-teal-500" };
   }
   
-  // 2. Pendant fenêtre fertile mais avant ovulation
-  if (normalizedDay >= fertileStartDay && normalizedDay < ovulationDay) {
-    const diff = diffDays(ovulationDate, today);
-    return { title: "Ovulation", daysLeft: diff, date: ovulationDate, icon: "🥚", color: "text-purple-500" };
+  // 3. Pendant la fenêtre fertile mais avant l'ovulation
+  if (currentDay < ovulationDay) {
+    const dLeft = diffDays(ovulationDate, today);
+    return { title: "Ovulation", daysLeft: dLeft, date: ovulationDate, icon: "🥚", color: "text-purple-500" };
   }
 
-  // 3. Jour d'ovulation
-  if (normalizedDay === ovulationDay) {
+  // 4. Jour de l'ovulation
+  if (currentDay === ovulationDay) {
     return { title: "Ovulation", daysLeft: 0, date: ovulationDate, icon: "✨", color: "text-purple-600" };
   }
 
-  // 4. Après ovulation (Phase lutéale) -> Prochaines règles
-  // Si on a dépassé le cycleLength, c'est du retard ou un nouveau cycle non loggé, mais ici on vise la fin théorique
-  let targetNextPeriod = nextPeriodDate;
-  // Si on est déjà après la date théorique (retard), on vise demain pour dire "Retard" ou on garde la date
-  const diff = Math.ceil((targetNextPeriod.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-  
-  if (diff <= 0) {
-     return { title: "Règles prévues", daysLeft: 0, date: targetNextPeriod, icon: "🩸", color: "text-rose-500" };
-  }
+  // 5. Après l'ovulation -> Prochaines règles
+  const dLeft = diffDays(nextPeriodDate, today);
+  return { title: "Prochaines Règles", daysLeft: dLeft, date: nextPeriodDate, icon: "🩸", color: "text-rose-500" };
+};
 
-  return { title: "Prochaines Règles", daysLeft: diff, date: targetNextPeriod, icon: "🩸", color: "text-rose-500" };
+export const getProjectedOvulationDate = (lastPeriod: Date, cycleLength: number): Date => {
+  // Pour la projection, on reste simple : cycle théorique actuel
+  // Même si retard, on projette sur le cycle théorique "suivant" ou "actuel"
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  
+  const lp = new Date(lastPeriod);
+  lp.setHours(0, 0, 0, 0);
+
+  const diffTime = today.getTime() - lp.getTime();
+  const diffDaysTotal = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+  
+  // Calcule l'index du cycle actuel (0, 1, 2...) basé sur la durée théorique
+  const cycleIndex = diffDaysTotal >= 0 ? Math.floor(diffDaysTotal / cycleLength) : 0;
+  
+  // Date de début du cycle théorique actuel
+  const currentCycleStart = addDays(lp, cycleIndex * cycleLength);
+  
+  const ovulationDayIndex = getOvulationDay(cycleLength);
+  
+  return addDays(currentCycleStart, ovulationDayIndex - 1);
 };
 
 // --- CALENDAR HELPERS ---

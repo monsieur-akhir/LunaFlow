@@ -12,6 +12,10 @@ const InsightCard: React.FC<InsightCardProps> = ({ title, content, loading, type
     ? 'from-rose-400 to-orange-300' 
     : 'from-teal-400 to-blue-400';
 
+  const handleShare = () => {
+    alert('Partage du conseil en cours...');
+  };
+
   return (
     <div className={`relative overflow-hidden rounded-3xl bg-gradient-to-br ${gradient} p-6 text-white shadow-lg transition-all duration-500 hover:shadow-xl`}>
       {/* Decorative circles */}
@@ -31,9 +35,17 @@ const InsightCard: React.FC<InsightCardProps> = ({ title, content, loading, type
               <span className="text-xl bg-white/20 p-1.5 rounded-full">✨</span>
               <h3 className="font-bold text-lg tracking-tight">{title}</h3>
             </div>
-            <p className="text-white/90 leading-relaxed font-medium">
+            <p className="text-white/90 leading-relaxed font-medium mb-4">
               {content}
             </p>
+            <div className="flex justify-end">
+              <button 
+                onClick={handleShare}
+                className="flex items-center gap-2 px-4 py-2 bg-white/20 hover:bg-white/30 active:scale-95 rounded-xl text-sm font-bold transition-all backdrop-blur-sm border border-white/10"
+              >
+                <span>📤</span> Partager
+              </button>
+            </div>
           </>
         )}
       </div>

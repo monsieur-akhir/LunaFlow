@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 
 interface CircularTrackerProps {
@@ -8,6 +9,7 @@ interface CircularTrackerProps {
   subLabel: string;
   color: 'pink' | 'purple' | 'teal' | 'red' | 'blue' | 'orange';
   icon?: React.ReactNode;
+  ovulationDay?: number; // Nouveau prop optionnel
 }
 
 const CircularTracker: React.FC<CircularTrackerProps> = ({ 
@@ -17,7 +19,8 @@ const CircularTracker: React.FC<CircularTrackerProps> = ({
   label, 
   subLabel, 
   color,
-  icon 
+  icon,
+  ovulationDay
 }) => {
   const [animatedProgress, setAnimatedProgress] = useState(0);
   const [animationFinished, setAnimationFinished] = useState(false);
@@ -134,7 +137,7 @@ const CircularTracker: React.FC<CircularTrackerProps> = ({
       
       {/* Center Text */}
       <div className="absolute flex flex-col items-center justify-center text-center">
-        {icon && <div className="mb-2 text-3xl animate-bounce">{icon}</div>}
+        {icon && <div className="mb-2 text-4xl animate-bounce">{icon}</div>}
         <span className={`text-4xl font-bold ${colorClasses[color].split(' ')[0]} transition-all duration-500`}>
           {current}
         </span>
@@ -144,6 +147,17 @@ const CircularTracker: React.FC<CircularTrackerProps> = ({
         <span className="text-slate-500 text-xs mt-1">
           {subLabel}
         </span>
+
+        {/* Info supplémentaire (Durée cycle + Ovulation) */}
+        <div className="flex items-center gap-2 mt-3 text-[10px] text-slate-500 font-medium bg-slate-50 px-3 py-1 rounded-full border border-slate-100 shadow-sm">
+            <span>Cycle {total}j</span>
+            {ovulationDay && (
+                <>
+                  <span className="w-1 h-1 rounded-full bg-slate-300"></span>
+                  <span className="text-purple-500 font-bold">Ovu J{ovulationDay}</span>
+                </>
+            )}
+        </div>
       </div>
     </div>
   );
